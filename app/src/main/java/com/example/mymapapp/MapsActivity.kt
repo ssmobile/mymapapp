@@ -54,7 +54,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
 
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-
+        mapTypes.check(R.id.normalMap)
         mapTypes.setOnCheckedChangeListener { radioGroup, id ->
             val radioButton = radioGroup?.findViewById<RadioButton>(id)
             val index = radioGroup.indexOfChild(radioButton)
@@ -68,6 +68,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 Color.parseColor("#000000")
             }
 
+            searchET.setTextColor(color)
 
             for (i in 0 until radioGroup.size) {
                 (radioGroup[i] as RadioButton).setTextColor(color)
@@ -136,7 +137,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             )
             startActivity(intent)
         } else {
-            locateDevice()
+            onLocationFABClick(v)
         }
     }
 
