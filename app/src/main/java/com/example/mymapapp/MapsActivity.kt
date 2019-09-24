@@ -1,7 +1,8 @@
 package com.example.mymapapp
 
+import android.Manifest
 import android.content.Context
-import android.graphics.BitmapFactory
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Geocoder
 import androidx.appcompat.app.AppCompatActivity
@@ -20,23 +21,21 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_maps.*
-import android.opengl.ETC1.getHeight
-import android.opengl.ETC1.getWidth
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.location.Location
 import androidx.core.graphics.drawable.DrawableCompat
 import android.os.Build
+import android.widget.Toast
 import androidx.core.content.ContextCompat
-import android.graphics.drawable.Drawable
-import androidx.core.app.ComponentActivity.ExtraData
-import androidx.core.content.ContextCompat.getSystemService
-import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
+    private lateinit var mFusedLocationProviderClient : FusedLocationProviderClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,6 +44,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
         mapTypes.setOnCheckedChangeListener { radioGroup, id ->
             val radioButton = radioGroup?.findViewById<RadioButton>(id)
@@ -79,6 +80,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    fun onLocationFABClick(v : View) {
+        if (PermissionManager(this).checkForPermission()) {
+            Log.d("TAG_Permission", "Has been granted")
+            locateDevice()
+        }
+    }
+
+    private fun locateDevice() {
+        mMap.isMyLocationEnabled = true
+        mMap.uiSettings.isMyLocationButtonEnabled = true
+
+        val locationResult = mFusedLocationProviderClient.lastLocation
+        lateinit var lastKnownLocation : Location
+
+
+        locationResult.addOnCompleteListener {
+            Log.d("TAG_locateUser","onCompleteListener: ${it.isSuccessful}")
+            if (it.isSuccessful && it.result != null) {
+                lastKnownLocation = it.result!!
+                mMap.moveCamera(CameraUpdateFactory
+                    .newLatLngZoom(LatLng(lastKnownLocation.latitude, lastKnownLocation.longitude),
+                        14f))
+            } else {
+                Log.e("TAG_locateUser", "${it.exception}")
+
+            }
+        }
+
+        Log.d("TAG_locateUser", "Location Result: $locationResult")
+    }
+
     private fun getLocationByAddress(address : String) : LatLng {
         val geocoder = Geocoder(this)
         val addressResult = geocoder.getFromLocationName(address, 1)[0]
@@ -93,6 +125,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (permissions[0]==Manifest.permission.ACCESS_FINE_LOCATION) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("TAG_PermissionResult", "Has been granted")
+                locateDevice()
+            } else {
+                Toast.makeText(this,
+                    "Location permissions required to display your location",
+                    Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     private fun displayLocationOnMap(latLng: LatLng, title : String) {
 
         mMap.addMarker(MarkerOptions()
@@ -112,6 +161,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.setMinZoomPreference(3.3f)
         mMap.moveCamera(CameraUpdateFactory.newLatLng(usa))
     }
+
 
     private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
         var drawable = ContextCompat.getDrawable(context, drawableId)

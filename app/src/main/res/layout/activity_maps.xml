@@ -89,7 +89,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:backgroundTint="@android:color/black"
-        android:clickable="true"
+        android:onClick="onLocationFABClick"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="16dp"
         map:srcCompat="@drawable/ic_my_location_24dp"
