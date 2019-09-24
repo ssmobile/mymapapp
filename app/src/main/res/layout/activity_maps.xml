@@ -85,7 +85,7 @@
     </RadioGroup>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/floatingActionButton"
+        android:id="@+id/locationBTN"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:backgroundTint="@android:color/black"
@@ -96,5 +96,18 @@
         map:layout_constraintBottom_toBottomOf="parent"
         map:layout_constraintEnd_toEndOf="parent"
         />
+
+    <ImageButton
+        android:id="@+id/directionsBTN"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="26dp"
+        android:layout_marginBottom="26dp"
+        android:background="@null"
+        android:visibility="gone"
+        android:onClick="onDirectionsClick"
+        map:srcCompat="@drawable/ic_directions_black_24dp"
+        map:layout_constraintStart_toStartOf="parent"
+        map:layout_constraintBottom_toBottomOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,11 +1,8 @@
 package com.example.mymapapp
 
 import android.Manifest
-import android.app.Dialog
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
-import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Geocoder
@@ -27,6 +24,8 @@ import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_maps.*
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.location.Location
+import android.net.Uri
 import androidx.core.graphics.drawable.DrawableCompat
 import android.os.Build
 import android.widget.Toast
@@ -39,6 +38,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var mFusedLocationProviderClient : FusedLocationProviderClient
+    private lateinit var lastSearchAddressLatLng : LatLng
+    private lateinit var lastKnownLocation : Location
 
     companion object {
         const val REQUEST_CHECK_SETTINGS = 1
@@ -78,8 +79,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap = googleMap
 
         val usa = LatLng(38.063741, -95.534281)
-        mMap.setMinZoomPreference(3.3f)
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(usa))
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(usa, 3.3f))
     }
 
     override fun onRequestPermissionsResult(
@@ -105,9 +105,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val address = searchET.text.toString()
 
         if (address.isNotEmpty()) {
-            mMap.setMinZoomPreference(15f)
-            val latLng = getLocationByAddress(address)
-            displayLocationOnMap(latLng, getAddressByLatLng(latLng))
+            lastSearchAddressLatLng = getLocationByAddress(address)
+            displayLocationOnMap(lastSearchAddressLatLng, getAddressByLatLng(lastSearchAddressLatLng))
         }
     }
 
@@ -115,11 +114,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val manager = PermissionManager(this)
         if (manager.checkForPermission()) {
             Log.d("TAG_Permission", "Has been granted")
+
             if (manager.locationServicesEnabled()) {
                 locateDevice()
             } else {
                 manager.requestLocationServices()
             }
+        }
+    }
+
+    fun onDirectionsClick(v : View) {
+
+        if (::lastKnownLocation.isInitialized) {
+            intent = Intent(
+                Intent.ACTION_VIEW,
+                Uri.parse(
+        "http://maps.google.com/maps?" +
+                "saddr=${lastKnownLocation.latitude},${lastKnownLocation.longitude}&" +
+                "daddr=${lastSearchAddressLatLng.latitude},${lastSearchAddressLatLng.longitude}"
+                )
+            )
+            startActivity(intent)
+        } else {
+            locateDevice()
         }
     }
 
@@ -132,7 +149,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         locationResult.addOnCompleteListener {
             Log.d("TAG_locateUser","onCompleteListener: ${it.isSuccessful}")
             if (it.isSuccessful && it.result != null) {
-                val lastKnownLocation = it.result!!
+                lastKnownLocation = it.result!!
                 mMap.moveCamera(CameraUpdateFactory
                     .newLatLngZoom(LatLng(lastKnownLocation.latitude, lastKnownLocation.longitude),
                         14f))
@@ -162,7 +179,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             .icon(BitmapDescriptorFactory.fromBitmap(
                 getBitmapFromVectorDrawable(this, R.drawable.ic_beenhere_24dp))
             ))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng))
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+
+        directionsBTN.visibility = View.VISIBLE
     }
 
     private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
