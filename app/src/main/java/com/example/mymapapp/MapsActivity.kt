@@ -59,7 +59,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if (address.isNotEmpty()) {
             mMap.setMinZoomPreference(15f)
             val latLng = getLocationByAddress(address)
-            displayLocationOnMap(latLng, getAddressyBLatLng(latLng))
+            displayLocationOnMap(latLng, getAddressByLatLng(latLng))
         }
     }
 
@@ -70,7 +70,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         return LatLng(addressResult.latitude, addressResult.longitude)
     }
 
-    private fun getAddressyBLatLng(latLng: LatLng) : String {
+    private fun getAddressByLatLng(latLng: LatLng) : String {
         val geocoder = Geocoder(this)
         return geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)[0].toString()
 
