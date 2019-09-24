@@ -2,12 +2,14 @@ package com.example.mymapapp
 
 import android.Manifest
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.Bundle
+import android.provider.Settings
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.example.mymapapp.PermissionManager.Companion.MY_REQUEST_ACCESS_FINE_LOCATION
 
 class PermissionManager(private var context: Context) {
 
@@ -32,6 +34,26 @@ class PermissionManager(private var context: Context) {
         ActivityCompat.requestPermissions(context as Activity,
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
             MY_REQUEST_ACCESS_FINE_LOCATION)
+    }
+
+    fun locationServicesEnabled() : Boolean {
+        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+    }
+
+
+    fun requestLocationServices() {
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setMessage("Location Services not enabled")
+            .setPositiveButton("Enable GPS") { _, _ ->
+                (context as Activity).startActivityForResult(
+                    Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS),
+                    MapsActivity.REQUEST_CHECK_SETTINGS, Bundle()
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
 }
