@@ -1,11 +1,8 @@
 package com.example.mymapapp
 
-import android.Manifest
-import android.content.Context
+import android.app.PendingIntent
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Color
-import android.location.Geocoder
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -18,28 +15,23 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_maps.*
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.location.Location
 import android.net.Uri
-import androidx.core.graphics.drawable.DrawableCompat
-import android.os.Build
 import android.widget.Toast
-import androidx.core.content.ContextCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.*
+import com.example.mymapapp.PermissionManager.OnPermissionResultCallback
 
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+class MapsActivity : AppCompatActivity()
+    , OnMapReadyCallback, OnPermissionResultCallback {
+
 
     private lateinit var mMap: GoogleMap
-    private lateinit var mFusedLocationProviderClient : FusedLocationProviderClient
     private lateinit var lastSearchAddressLatLng : LatLng
-    private lateinit var lastKnownLocation : Location
+    private lateinit var permissionManager : PermissionManager
+    private lateinit var locationManager : LocationManager
+    private lateinit var geofencingClient: GeofencingClient
 
     companion object {
         const val REQUEST_CHECK_SETTINGS = 1
@@ -49,17 +41,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
 
+
+        configureUI()
+        permissionManager = PermissionManager(this)
+        geofencingClient = LocationServices.getGeofencingClient(this)
+//        getGeoFence()
+
+    }
+
+
+    private fun configureUI() {
+
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-        mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         mapTypes.check(R.id.normalMap)
         mapTypes.setOnCheckedChangeListener { radioGroup, id ->
             val radioButton = radioGroup?.findViewById<RadioButton>(id)
             val index = radioGroup.indexOfChild(radioButton)
-            Log.d("TAG_MapType", "$id")
-            Log.d("TAG_MapType", "${radioGroup.indexOfChild(radioButton)}")
             mMap.mapType = index
 
             val color = if (index == 2 || index == 4) {
@@ -74,6 +73,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 (radioGroup[i] as RadioButton).setTextColor(color)
             }
         }
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -81,6 +81,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         val usa = LatLng(38.063741, -95.534281)
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(usa, 3.3f))
+        locationManager = LocationManager(mMap, this)
     }
 
     override fun onRequestPermissionsResult(
@@ -89,16 +90,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        if (permissions[0]==Manifest.permission.ACCESS_FINE_LOCATION) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("TAG_PermissionResult", "Has been granted")
-                locateDevice()
-            } else {
-                Toast.makeText(this,
-                    "Location permissions required to display your location",
-                    Toast.LENGTH_SHORT).show()
-            }
-        }
+        permissionManager.getPermissionResults(requestCode, permissions, grantResults)
     }
 
     fun clickSearch(v : View) {
@@ -106,27 +98,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val address = searchET.text.toString()
 
         if (address.isNotEmpty()) {
-            lastSearchAddressLatLng = getLocationByAddress(address)
-            displayLocationOnMap(lastSearchAddressLatLng, getAddressByLatLng(lastSearchAddressLatLng))
+            lastSearchAddressLatLng = locationManager.getLocationByAddress(address)
+            locationManager.displayLocationOnMap(lastSearchAddressLatLng,
+                locationManager.getAddressByLatLng(lastSearchAddressLatLng))
         }
     }
 
     fun onLocationFABClick(v : View) {
-        val manager = PermissionManager(this)
-        if (manager.checkForPermission()) {
+        if (permissionManager.checkForPermission()) {
             Log.d("TAG_Permission", "Has been granted")
 
-            if (manager.locationServicesEnabled()) {
-                locateDevice()
+            if (permissionManager.locationServicesEnabled()) {
+                locationManager.locateDevice()
             } else {
-                manager.requestLocationServices()
+                permissionManager.requestLocationServices()
             }
         }
     }
 
     fun onDirectionsClick(v : View) {
 
-        if (::lastKnownLocation.isInitialized) {
+        if (locationManager.isLastKnownLocationInitialized()) {
+            Log.d("TAG_onDirectionsClick", "clicked")
+            val lastKnownLocation = locationManager.lastKnownLocation
             intent = Intent(
                 Intent.ACTION_VIEW,
                 Uri.parse(
@@ -141,64 +135,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun locateDevice() {
-        mMap.isMyLocationEnabled = true
-        mMap.uiSettings.isMyLocationButtonEnabled = true
 
-        val locationResult = mFusedLocationProviderClient.lastLocation
 
-        locationResult.addOnCompleteListener {
-            Log.d("TAG_locateUser","onCompleteListener: ${it.isSuccessful}")
-            if (it.isSuccessful && it.result != null) {
-                lastKnownLocation = it.result!!
-                mMap.moveCamera(CameraUpdateFactory
-                    .newLatLngZoom(LatLng(lastKnownLocation.latitude, lastKnownLocation.longitude),
-                        14f))
-            } else {
-                Log.e("TAG_locateUser", "${it.exception}")
-            }
-        }
+    override fun onPermissionGranted() {
+        locationManager.locateDevice()
     }
 
-    private fun getLocationByAddress(address : String) : LatLng {
-        val geocoder = Geocoder(this)
-        val addressResult = geocoder.getFromLocationName(address, 1)[0]
-
-        return LatLng(addressResult.latitude, addressResult.longitude)
-    }
-
-    private fun getAddressByLatLng(latLng: LatLng) : String {
-        val geocoder = Geocoder(this)
-        return geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)[0].toString()
-    }
-
-
-    private fun displayLocationOnMap(latLng: LatLng, title : String) {
-        mMap.addMarker(MarkerOptions()
-            .position(latLng)
-            .title(title)
-            .icon(BitmapDescriptorFactory.fromBitmap(
-                getBitmapFromVectorDrawable(this, R.drawable.ic_beenhere_24dp))
-            ))
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
-
-        directionsBTN.visibility = View.VISIBLE
-    }
-
-    private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
-        var drawable = ContextCompat.getDrawable(context, drawableId)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            drawable = DrawableCompat.wrap(drawable!!).mutate()
-        }
-
-        val bitmap = Bitmap.createBitmap(
-            drawable!!.intrinsicWidth,
-            drawable.intrinsicHeight, Bitmap.Config.ARGB_8888
-        )
-        val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight())
-        drawable.draw(canvas)
-
-        return bitmap
+    override fun onPermissionDenied() {
+        Toast.makeText(
+            this,
+            "Location permissions required to display your location",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }

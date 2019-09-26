@@ -8,6 +8,8 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
@@ -30,6 +32,19 @@ class PermissionManager(private var context: Context) {
 
     }
 
+    fun getPermissionResults
+                (requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+
+        if (permissions[0] == Manifest.permission.ACCESS_FINE_LOCATION) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d("TAG_PermissionResult", "Has been granted")
+                (context as OnPermissionResultCallback).onPermissionGranted()
+            } else {
+                (context as OnPermissionResultCallback).onPermissionDenied()
+            }
+        }
+    }
+
     private fun requestPermission() {
         ActivityCompat.requestPermissions(context as Activity,
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
@@ -37,7 +52,8 @@ class PermissionManager(private var context: Context) {
     }
 
     fun locationServicesEnabled() : Boolean {
-        val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val locationManager =
+            context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
     }
@@ -54,6 +70,13 @@ class PermissionManager(private var context: Context) {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    interface OnPermissionResultCallback {
+        fun onPermissionGranted()
+
+        fun onPermissionDenied()
+
     }
 
 }
