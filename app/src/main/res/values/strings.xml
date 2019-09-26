@@ -7,4 +7,8 @@
     <string name="none">None</string>
     <string name="terrain">Terrain</string>
     <string name="search">Search</string>
+
+    <string name="unknown_geofence_transition">Unknown geofence transition</string>
+    <string name="geofence_transition_entered">Geofence transition entered</string>
+    <string name="geofence_transition_exited">Geofence transition exited</string>
 </resources>

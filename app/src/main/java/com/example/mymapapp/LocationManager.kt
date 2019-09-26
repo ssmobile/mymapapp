@@ -45,10 +45,12 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
                         .newLatLngZoom(
                             LatLng(lastKnownLocation.latitude, lastKnownLocation.longitude),
                             14f))
+                Log.d("TAG_locateUser", "${it.result}")
             } else {
                 Log.e("TAG_locateUser", "${it.exception}")
             }
         }
+
     }
 
     fun getLocationByAddress(address : String) : LatLng {
@@ -70,15 +72,15 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
                 .title(title)
                 .icon(
                     BitmapDescriptorFactory.fromBitmap(
-                        getBitmapFromVectorDrawable(context, R.drawable.ic_beenhere_24dp))
+                        getBitmapFromVectorDrawable(context))
                 ))
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
 
         (context as MapsActivity).directionsBTN.visibility = View.VISIBLE
     }
 
-    private fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
-        var drawable = ContextCompat.getDrawable(context, drawableId)
+    private fun getBitmapFromVectorDrawable(context: Context): Bitmap {
+        var drawable = ContextCompat.getDrawable(context, R.drawable.ic_beenhere_24dp)
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             drawable = DrawableCompat.wrap(drawable!!).mutate()
         }
@@ -88,7 +90,7 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
             drawable.intrinsicHeight, Bitmap.Config.ARGB_8888
         )
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight())
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
 
         return bitmap

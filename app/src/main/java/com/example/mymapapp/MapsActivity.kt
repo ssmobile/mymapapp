@@ -32,6 +32,7 @@ class MapsActivity : AppCompatActivity()
     private lateinit var permissionManager : PermissionManager
     private lateinit var locationManager : LocationManager
     private lateinit var geofencingClient: GeofencingClient
+    private lateinit var geofenceManager : GeofenceManager
 
     companion object {
         const val REQUEST_CHECK_SETTINGS = 1
@@ -41,12 +42,15 @@ class MapsActivity : AppCompatActivity()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
 
-
         configureUI()
         permissionManager = PermissionManager(this)
         geofencingClient = LocationServices.getGeofencingClient(this)
-//        getGeoFence()
 
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        removeGeofences()
     }
 
 
@@ -74,6 +78,31 @@ class MapsActivity : AppCompatActivity()
             }
         }
 
+    }
+
+    private fun addGeofences() {
+        geofencingClient.addGeofences(geofenceManager.getGeofencingRequest(),
+            geofencePendingIntent)?.run {
+                addOnSuccessListener {
+                    Log.d("TAG_addGeofences", "success")
+                }
+
+                addOnFailureListener {
+                    Log.e("TAG_addGeofences", "failure", it)
+                }
+            }
+    }
+
+    private fun removeGeofences() {
+        geofencingClient.removeGeofences(geofencePendingIntent)?.run {
+            addOnSuccessListener {
+                Log.d("TAG_removeGeofences", "success")
+            }
+
+            addOnFailureListener {
+                Log.e("TAG_removeGeofences", "failure", it)
+            }
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -110,6 +139,11 @@ class MapsActivity : AppCompatActivity()
 
             if (permissionManager.locationServicesEnabled()) {
                 locationManager.locateDevice()
+                if (locationManager.isLastKnownLocationInitialized()) {
+                geofenceManager = GeofenceManager(locationManager.lastKnownLocation)
+                addGeofences()
+                }
+
             } else {
                 permissionManager.requestLocationServices()
             }
@@ -136,6 +170,11 @@ class MapsActivity : AppCompatActivity()
     }
 
 
+    private val geofencePendingIntent : PendingIntent by lazy {
+        val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
+        PendingIntent
+            .getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+    }
 
     override fun onPermissionGranted() {
         locationManager.locateDevice()
