@@ -3,18 +3,21 @@ package com.example.mymapapp
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.location.Geocoder
 import android.location.Location
 import android.os.Build
+import android.os.Looper
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CircleOptions
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.android.synthetic.main.activity_maps.*
@@ -22,7 +25,7 @@ import kotlinx.android.synthetic.main.activity_maps.*
 class LocationManager(private val map : GoogleMap, private val context: Context) {
 
 
-    private var mFusedLocationProviderClient : FusedLocationProviderClient =
+    private var locationProvider : FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(context)
     lateinit var lastKnownLocation : Location
 
@@ -34,7 +37,7 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
         map.isMyLocationEnabled = true
         map.uiSettings.isMyLocationButtonEnabled = true
 
-        val locationResult = mFusedLocationProviderClient.lastLocation
+        val locationResult = locationProvider.lastLocation
 
         locationResult.addOnCompleteListener {
             Log.d("TAG_locateUser","onCompleteListener: ${it.isSuccessful}")
@@ -74,6 +77,14 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
                     BitmapDescriptorFactory.fromBitmap(
                         getBitmapFromVectorDrawable(context))
                 ))
+
+        map.addCircle(
+            CircleOptions()
+                .center(latLng)
+                .radius(Constants.GEOFENCE_RADIUS_IN_METERS.toDouble())
+                .strokeColor(Color.BLUE)
+                .fillColor(Color.BLUE)
+        )
         map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
 
         (context as MapsActivity).directionsBTN.visibility = View.VISIBLE
@@ -96,6 +107,41 @@ class LocationManager(private val map : GoogleMap, private val context: Context)
         return bitmap
     }
 
+    private fun getLocationRequest(numOfUpdates : Int) : LocationRequest {
+        val request = LocationRequest()
+        request.maxWaitTime = 5
+        request.interval = 3
+        request.numUpdates = numOfUpdates
+        request.smallestDisplacement = 1f
+        return request
+    }
+
+    fun getLocationUpdates(numOfUpdates: Int) {
+        val locationRequest = getLocationRequest(numOfUpdates)
+        val settingsRequest =
+            LocationSettingsRequest.Builder()
+                .addLocationRequest(locationRequest)
+                .build()
+
+        val settingsClient = SettingsClient(context)
+        settingsClient.checkLocationSettings(settingsRequest)
+        locationProvider.requestLocationUpdates(locationRequest, object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult?) {
+                super.onLocationResult(result)
+                val location = result?.locations?.get(0)
+                val lat = location?.latitude
+                val long = location?.longitude
+                Log.d("TAG_onLocationResult", "$lat, $long")
+
+                locationProvider.lastLocation.addOnSuccessListener {
+                    Log.d("TAG_Last Location", "${it.latitude}, ${it.longitude}")
+                }
+            }
+
+        }, Looper.myLooper())
+
+
+    }
 
 
 }

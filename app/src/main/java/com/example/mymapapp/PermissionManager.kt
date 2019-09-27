@@ -22,7 +22,9 @@ class PermissionManager(private var context: Context) {
     fun checkForPermission() : Boolean {
         return if (ContextCompat
                 .checkSelfPermission(context,Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED &&
+            ContextCompat.checkSelfPermission(context,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermission()
             false
         } else {
@@ -34,8 +36,10 @@ class PermissionManager(private var context: Context) {
     fun getPermissionResults
                 (requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
 
-        if (permissions[0] == Manifest.permission.ACCESS_FINE_LOCATION) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (permissions[0] == Manifest.permission.ACCESS_FINE_LOCATION
+            && permissions[1] == Manifest.permission.ACCESS_BACKGROUND_LOCATION) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED
+                && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                 Log.d("TAG_PermissionResult", "Has been granted")
                 (context as OnPermissionResultCallback).onPermissionGranted()
             } else {
@@ -46,7 +50,9 @@ class PermissionManager(private var context: Context) {
 
     private fun requestPermission() {
         ActivityCompat.requestPermissions(context as Activity,
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION),
             MY_REQUEST_ACCESS_FINE_LOCATION)
     }
 

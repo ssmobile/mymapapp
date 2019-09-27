@@ -1,8 +1,12 @@
 package com.example.mymapapp
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.location.Location
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
@@ -18,14 +22,19 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import kotlinx.android.synthetic.main.activity_maps.*
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import com.google.android.gms.location.*
 import com.example.mymapapp.PermissionManager.OnPermissionResultCallback
 
 
-class MapsActivity : AppCompatActivity()
-    , OnMapReadyCallback, OnPermissionResultCallback {
+class MapsActivity : AppCompatActivity(),
+    OnMapReadyCallback, OnPermissionResultCallback {
 
+    companion object {
+        const val REQUEST_CHECK_SETTINGS = 1
+        const val CHANNEL_ID = "GEOFENCE_NOTIFICATION_CHANNEL"
+    }
 
     private lateinit var mMap: GoogleMap
     private lateinit var lastSearchAddressLatLng : LatLng
@@ -34,8 +43,9 @@ class MapsActivity : AppCompatActivity()
     private lateinit var geofencingClient: GeofencingClient
     private lateinit var geofenceManager : GeofenceManager
 
-    companion object {
-        const val REQUEST_CHECK_SETTINGS = 1
+    override fun onStart() {
+        super.onStart()
+        createNotificationChannel()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -111,6 +121,7 @@ class MapsActivity : AppCompatActivity()
         val usa = LatLng(38.063741, -95.534281)
         mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(usa, 3.3f))
         locationManager = LocationManager(mMap, this)
+        locationManager.getLocationUpdates(1000)
     }
 
     override fun onRequestPermissionsResult(
@@ -139,9 +150,10 @@ class MapsActivity : AppCompatActivity()
 
             if (permissionManager.locationServicesEnabled()) {
                 locationManager.locateDevice()
-                if (locationManager.isLastKnownLocationInitialized()) {
-                geofenceManager = GeofenceManager(locationManager.lastKnownLocation)
-                addGeofences()
+//                locationManager.getLocationUpdates(100)
+                if (::lastSearchAddressLatLng.isInitialized) {
+                    geofenceManager = GeofenceManager(lastSearchAddressLatLng)
+                    addGeofences()
                 }
 
             } else {
@@ -172,9 +184,26 @@ class MapsActivity : AppCompatActivity()
 
     private val geofencePendingIntent : PendingIntent by lazy {
         val intent = Intent(this, GeofenceBroadcastReceiver::class.java)
+        Log.d("TAG_PendingIntent", "by Lazy")
         PendingIntent
             .getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.channel_name)
+            val descriptionText = getString(R.string.description_text)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance)
+                .apply { description = descriptionText }
+            val notificationManager : NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+
+
 
     override fun onPermissionGranted() {
         locationManager.locateDevice()

@@ -11,4 +11,7 @@
     <string name="unknown_geofence_transition">Unknown geofence transition</string>
     <string name="geofence_transition_entered">Geofence transition entered</string>
     <string name="geofence_transition_exited">Geofence transition exited</string>
+
+    <string name="channel_name">NOTIFICATION_CHANNEL_256</string>
+    <string name="description_text">Default notification channel</string>
 </resources>
